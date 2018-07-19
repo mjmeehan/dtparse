@@ -1092,7 +1092,11 @@ impl Parser {
                 res.hour = Some(self.adjust_ampm(hour, ampm));
                 idx += 1;
             } else {
-                ymd.append(value.floor().to_i64().unwrap() as i32, &value_repr, None)?;
+                if let Some(val) = value.floor().to_i32() {
+                    ymd.append(val, &value_repr, None)?;
+                } else {
+                    return Err(ParseInternalError::ValueError("Overflow".to_owned()));
+                }
             }
 
             idx += 1;
