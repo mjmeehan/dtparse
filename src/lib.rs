@@ -260,8 +260,8 @@ impl Default for ParserInfo {
             tzoffset: parse_info(vec![vec![]]),
             dayfirst: false,
             yearfirst: false,
-            year: year,
-            century: century,
+            year,
+            century,
         }
     }
 }
@@ -1087,28 +1087,29 @@ impl Parser {
             idx += 1
         } else if idx + 1 >= len_l || info.jump_index(&tokens[idx + 1]) {
             if idx + 2 < len_l && info.ampm_index(&tokens[idx + 2]).is_some() {
-                let hour = value.to_i64().unwrap() as i32;
+                let hour = value.to_i32().unwrap();
                 let ampm = info.ampm_index(&tokens[idx + 2]).unwrap();
                 res.hour = Some(self.adjust_ampm(hour, ampm));
                 idx += 1;
             } else {
                 if let Some(val) = value.floor().to_i32() {
                     ymd.append(val, &value_repr, None)?;
-                } else {
-                    return Err(ParseInternalError::ValueError("Overflow".to_owned()));
                 }
             }
 
             idx += 1;
         } else if info.ampm_index(&tokens[idx + 1]).is_some()
             && (*ZERO <= value && value < *TWENTY_FOUR)
-        {
+            {
             // 12am
-            let hour = value.to_i64().unwrap() as i32;
-            res.hour = Some(self.adjust_ampm(hour, info.ampm_index(&tokens[idx + 1]).unwrap()));
-            idx += 1;
-        } else if ymd.could_be_day(value.to_i64().unwrap() as i32) {
-            ymd.append(value.to_i64().unwrap() as i32, &value_repr, None)?;
+            if let Some(hour) = value.to_i32() {
+                res.hour = Some(self.adjust_ampm(hour, info.ampm_index(&tokens[idx + 1]).unwrap()));
+                idx += 1;
+            }
+        } else if let Some(maybe_day) = value.to_i32() {
+            if ymd.could_be_day(maybe_day) {
+                ymd.append(maybe_day, &value_repr, None)?;
+            }
         } else if !fuzzy {
             return Err(ParseError::UnrecognizedFormat);
         }
