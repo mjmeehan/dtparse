@@ -21,6 +21,7 @@ fn test_fuzz() {
                Err(ParseError::InternalError(ParseInternalError::ValueError("Unknown string format".to_owned()))));
     // Python calls this one a ValueError("Unknown string format"), but we manage to parse it
     assert_eq!(parse("\x0a\x0a6.96."), parse("6.96."));
+    assert_eq!(parse("\x0a6.\x0a0\x0a\x0b\x0a5"), parse("6.0.5"));
     let default = NaiveDate::from_ymd(2016, 6, 29).and_hms(0, 0, 0);
     let mut p = Parser::default();
     let res = p.parse("\x0D\x31", None, None, false, false, Some(&default), false, &HashMap::new()).unwrap();

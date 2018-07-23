@@ -907,12 +907,25 @@ impl Parser {
             Duration::days(0)
         };
 
+        let day = min(res.day.unwrap_or(default.day() as i32) as u32, days_in_month(y, m as i32)?);
+
         // TODO: Change month/day to u32
-        let d = NaiveDate::from_ymd(
+        let d = match NaiveDate::from_ymd_opt(
             y,
             m,
-            min(res.day.unwrap_or(default.day() as i32) as u32, days_in_month(y, m as i32)?)
-        );
+            day
+        ) {
+            Some(date) => date,
+            None => if  y < -40_000 || y > 40_000 {
+                return Err(ParseError::ImpossibleTimestamp("Invalid year"))
+            } else if m < 1 || m > 12 {
+                return Err(ParseError::ImpossibleTimestamp("Invalid month"))
+            } else if day < 1 || day > 31 {
+                return Err(ParseError::ImpossibleTimestamp("Invalid day"))
+            } else {
+                unreachable!();
+            }
+        };
 
         let d = d + d_offset;
 
@@ -921,19 +934,21 @@ impl Parser {
         let second = res.second.unwrap_or(default.second() as i32) as u32;
         let microsecond = res.microsecond
             .unwrap_or(default.timestamp_subsec_micros() as i32) as u32;
-        let t = NaiveTime::from_hms_micro_opt(hour, minute, second, microsecond).ok_or_else(|| {
-            if hour >= 24 {
-                ParseError::ImpossibleTimestamp("Invalid hour")
-            } else if minute >= 60 {
-                ParseError::ImpossibleTimestamp("Invalid minute")
-            } else if second >= 60 {
-                ParseError::ImpossibleTimestamp("Invalid second")
-            } else if microsecond >= 2_000_000 {
-                ParseError::ImpossibleTimestamp("Invalid microsecond")
-            } else {
-                unreachable!();
-            }
-        })?;
+        let t = match NaiveTime::from_hms_micro_opt(hour, minute, second, microsecond)
+            {
+                Some(time) => time,
+                None => if hour >= 24 {
+                    return Err(ParseError::ImpossibleTimestamp("Invalid hour"))
+                } else if minute >= 60 {
+                    return Err(ParseError::ImpossibleTimestamp("Invalid minute"))
+                } else if second >= 60 {
+                    return Err(ParseError::ImpossibleTimestamp("Invalid second"))
+                } else if microsecond >= 2_000_000 {
+                    return Err(ParseError::ImpossibleTimestamp("Invalid microsecond"))
+                } else {
+                    unreachable!();
+                }
+            };
 
         Ok(NaiveDateTime::new(d, t))
     }
